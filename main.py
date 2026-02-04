@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import re
+import sys
 import base64
 import pathlib
 from datetime import datetime, timedelta, timezone
@@ -10,22 +11,40 @@ from urllib.parse import urlparse
 import requests
 from dotenv import load_dotenv
 from dateutil import parser as dateparser
-from PIL import Image  # pip install pillow
+from PIL import Image
 
 # ---- Load .env reliably (Windows-safe) ----
-ENV_PATH = pathlib.Path(__file__).resolve().parent / ".env"
+SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
+ENV_PATH = SCRIPT_DIR / ".env"
 load_dotenv(dotenv_path=ENV_PATH)
 
 WISE_BASE = "https://na-api.wiseapp.live"
 UA = "VendorIntegrations/jmcg-maths-mentors"
 
 DOWNLOAD_DATE = datetime.now().strftime("%Y-%m-%d")
-DOWNLOAD_ROOT = pathlib.Path("downloads") / f"Downloaded_{DOWNLOAD_DATE}"
+DOWNLOAD_ROOT = SCRIPT_DIR / "downloads" / f"Downloaded_{DOWNLOAD_DATE}"
 
 DAYS_BACK = 7
 DEBUG = False
 
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
+
+REQUIRED_ENV_VARS = [
+    "WISE_API_KEY",
+    "WISE_NAMESPACE",
+    "WISE_INSTITUTE_ID",
+    "WISE_BASIC_USER",
+    "WISE_BASIC_PASS",
+]
+
+
+def validate_env() -> None:
+    """Check all required environment variables are set."""
+    missing = [k for k in REQUIRED_ENV_VARS if not os.environ.get(k)]
+    if missing:
+        print(f"ERROR: Missing environment variables: {', '.join(missing)}")
+        print("Please check your .env file or Streamlit secrets configuration.")
+        sys.exit(1)
 
 
 # ----------------------------
@@ -342,6 +361,7 @@ def images_to_pdf(image_paths: list[pathlib.Path], out_pdf: pathlib.Path) -> Non
 # Main: one folder, PDFs + images-as-PDF
 # ----------------------------
 def main():
+    validate_env()
     institute_id = os.environ["WISE_INSTITUTE_ID"]
     since = datetime.now(timezone.utc) - timedelta(days=DAYS_BACK)
 
@@ -394,7 +414,8 @@ def main():
                     if ok and isinstance(cur, str) and cur.strip():
                         title = cur.strip()
                         break
-            assessment_title = safe_part(title or f"assessment_{aid}", max_len=60)
+            # Use raw assessment ID if no title (for upload regex matching)
+            assessment_title = safe_part(title, max_len=60) if title else aid
 
             for sub in submissions:
                 ts = find_any_timestamp(sub)
@@ -438,35 +459,35 @@ def main():
 
                         # download images to temp
                         image_paths: list[pathlib.Path] = []
-                        for idx, a in enumerate(image_atts, start=1):
-                            ext = pathlib.Path(a["filename"]).suffix.lower()
-                            if ext not in IMAGE_EXTS:
-                                ext = ".jpg"
-                            img_name = f"{prefix}__image_{idx:02d}{ext}"
-                            img_path = unique_path(tmp_dir, img_name)
-                            try:
-                                download_url(a["url"], img_path)
-                                image_paths.append(img_path)
-                            except Exception as e:
-                                print(f"[WARN] Image download failed: {a['url']} -> {e}")
+                        try:
+                            for idx, a in enumerate(image_atts, start=1):
+                                ext = pathlib.Path(a["filename"]).suffix.lower()
+                                if ext not in IMAGE_EXTS:
+                                    ext = ".jpg"
+                                img_name = f"{prefix}__image_{idx:02d}{ext}"
+                                img_path = unique_path(tmp_dir, img_name)
+                                try:
+                                    download_url(a["url"], img_path)
+                                    image_paths.append(img_path)
+                                except Exception as e:
+                                    print(f"[WARN] Image download failed: {a['url']} -> {e}")
 
-                        if image_paths:
-                            # create a single pdf from images
-                            out_pdf_name = f"{prefix}__images.pdf"
-                            out_pdf_path = unique_path(DOWNLOAD_ROOT, out_pdf_name)
-                            try:
-                                images_to_pdf(image_paths, out_pdf_path)
-                                created_image_pdfs += 1
-                                print(f"Created PDF from images: {out_pdf_path.name}")
-                            except Exception as e:
-                                print(f"[WARN] Failed to create PDF from images -> {e}")
-
-                        # optional: clean up temp images (comment out if you want to keep them)
-                        for p in image_paths:
-                            try:
-                                p.unlink()
-                            except Exception:
-                                pass
+                            if image_paths:
+                                out_pdf_name = f"{prefix}__images.pdf"
+                                out_pdf_path = unique_path(DOWNLOAD_ROOT, out_pdf_name)
+                                try:
+                                    images_to_pdf(image_paths, out_pdf_path)
+                                    created_image_pdfs += 1
+                                    print(f"Created PDF from images: {out_pdf_path.name}")
+                                except Exception as e:
+                                    print(f"[WARN] Failed to create PDF from images -> {e}")
+                        finally:
+                            # Always clean up temp images
+                            for p in image_paths:
+                                try:
+                                    p.unlink()
+                                except Exception:
+                                    pass
 
     print("\nDone.")
     print(f"PDFs downloaded: {downloaded_pdfs}")
