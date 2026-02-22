@@ -21,8 +21,8 @@ load_dotenv(dotenv_path=ENV_PATH)
 WISE_BASE = "https://na-api.wiseapp.live"
 UA = "VendorIntegrations/jmcg-maths-mentors"
 
-DOWNLOAD_DATE = datetime.now().strftime("%Y-%m-%d")
-DOWNLOAD_ROOT = SCRIPT_DIR / "downloads" / f"Downloaded_{DOWNLOAD_DATE}"
+DOWNLOAD_TIMESTAMP = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+DOWNLOAD_ROOT = SCRIPT_DIR / "downloads" / f"Downloaded_{DOWNLOAD_TIMESTAMP}"
 
 # Can be overridden via CLI argument: python main.py <days>
 DAYS_BACK = int(sys.argv[1]) if len(sys.argv) > 1 else 7
