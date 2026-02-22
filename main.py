@@ -24,7 +24,8 @@ UA = "VendorIntegrations/jmcg-maths-mentors"
 DOWNLOAD_DATE = datetime.now().strftime("%Y-%m-%d")
 DOWNLOAD_ROOT = SCRIPT_DIR / "downloads" / f"Downloaded_{DOWNLOAD_DATE}"
 
-DAYS_BACK = 7
+# Can be overridden via CLI argument: python main.py <days>
+DAYS_BACK = int(sys.argv[1]) if len(sys.argv) > 1 else 7
 DEBUG = False
 
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}

@@ -165,9 +165,23 @@ def main():
     # ---- STEP 1: DOWNLOAD ----
     st.subheader("Step 1 — Download Submissions")
 
-    if st.button("Download Last 7 Days", use_container_width=True, type="primary"):
+    days_options = {
+        "Last 1 day": 1,
+        "Last 2 days": 2,
+        "Last 3 days": 3,
+        "Last 4 days": 4,
+        "Last 5 days": 5,
+        "Last 6 days": 6,
+        "Last 7 days": 7,
+        "Last 14 days": 14,
+        "Last 30 days": 30,
+    }
+    selected_label = st.selectbox("Time period", list(days_options.keys()), index=6)
+    days_back = days_options[selected_label]
+
+    if st.button(f"Download ({selected_label})", use_container_width=True, type="primary"):
         with st.spinner("Fetching submissions from Wise..."):
-            run_script("main.py")
+            run_script("main.py", [str(days_back)])
         st.rerun()
 
     latest_folder = get_latest_download_folder()
