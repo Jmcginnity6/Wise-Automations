@@ -143,21 +143,33 @@ def main():
     with st.expander("📋 How to use this app", expanded=True):
         st.markdown("""
         #### Step 1 — Download Submissions
-        Click **Download Last 7 Days** to fetch all student submissions from Wise.
-        Once complete, click **Download ZIP** to save all the PDFs to your device.
+        - Use the dropdown to select your time period (e.g. Last 1 day, Last 7 days)
+        - Click **Download** to fetch all student submissions from Wise
+        - Once complete, click **Download ZIP** to save all the PDFs to your device
 
         #### Step 2 — Mark on Your iPad
         1. Open the ZIP file and extract the PDFs
         2. Open each PDF in an annotation app (e.g. **GoodNotes**, **Notability**, or **PDF Expert**)
         3. Add your written feedback
-        4. Export/save each marked file — **the filename must end with ` Marked.pdf`**
+        4. Export/save the marked file — **you must add ` Marked` to the end of the filename before `.pdf`**
 
-        > **Example:** `M2 Maths Class__Test 3__Kerry Irvine__...pdf`
-        > becomes → `M2 Maths Class__Test 3__Kerry Irvine__... Marked.pdf`
+        > **Example:**
+        > `M2 Maths Class__695baa...__Kerry Irvine__695d54....__M2 Test 3.pdf`
+        > → `M2 Maths Class__695baa...__Kerry Irvine__695d54....__M2 Test 3 Marked.pdf`
+
+        The filename must stay exactly the same — only add ` Marked` (with a space) before `.pdf`.
 
         #### Step 3 — Upload Marked Files
-        Use the **Upload Marked PDFs** section below to select all your marked files.
-        The app will send them directly to Wise as student feedback.
+        - Scroll down to **Step 3** and click **Browse files**
+        - Select **all** your marked PDFs at once (you can select multiple files)
+        - The app will check each filename ends with ` Marked.pdf` — any that don't match will be flagged
+        - Click **Upload to Wise** to send the feedback
+
+        ---
+        **Important notes:**
+        - Upload **individual PDFs**, not a ZIP
+        - Keep the full filename intact — only add ` Marked` at the end
+        - If a filename doesn't match the expected format, the app will warn you before uploading
         """)
 
     st.divider()
