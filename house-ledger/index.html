@@ -86,7 +86,14 @@ h1 { font-family: var(--font-display); font-size: 1.05rem; letter-spacing: .02em
 
 .list { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
 .row { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 0; border-bottom: 1px solid var(--line); background: transparent; width: 100%; text-align: left; color: inherit; font: inherit; cursor: pointer; }
-.row:last-child { border-bottom: 0; }
+.rowwrap { display: flex; align-items: center; border-bottom: 1px solid var(--line); }
+.rowwrap:last-child { border-bottom: 0; }
+.rowwrap .row { border-bottom: 0; flex: 1; min-width: 0; padding-right: 6px; }
+.rm { flex: none; margin-right: 10px; height: 36px; min-width: 36px; padding: 0 9px; border-radius: 10px; border: 0; background: transparent; color: var(--muted); display: flex; align-items: center; justify-content: center; gap: 6px; font: 700 .8rem var(--font-body); cursor: pointer; }
+.rm svg { width: 18px; height: 18px; }
+.rm:hover { background: var(--danger-soft); color: var(--danger); }
+.rm.armed { background: var(--danger); color: var(--surface); }
+.rm:focus-visible { outline: 2px solid var(--danger); outline-offset: 2px; }
 .row:active { background: var(--accent-soft); }
 .badge { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; font: 700 .8rem var(--font-display); color: #fff; flex: none; }
 .row .mid { flex: 1; min-width: 0; }
@@ -308,16 +315,23 @@ function rowBill(it) {
   const sub = it.kind === "yearly" ? `<small>${fmt(it.pence)}/yr</small>` : "";
   const main = it.kind === "yearly" ? `${fmt(monthlyOf(it), 2)}/mo` : `${fmt(it.pence)}/mo`;
   const meta = [it.category, it.kind === "yearly" ? "Yearly" : "Monthly", it.note].filter(Boolean).map(esc).join(" · ");
-  return `<button class="row" data-id="${esc(it.id)}"><span class="badge" style="background:${colorFor(it.category)}">${esc(initials(it.category))}</span>
+  return wrapRow(it, `<button class="row" data-id="${esc(it.id)}"><span class="badge" style="background:${colorFor(it.category)}">${esc(initials(it.category))}</span>
     <span class="mid"><div class="name">${esc(it.name)}</div><div class="meta">${meta}</div></span>
-    <span class="amt num">${main}${sub}</span></button>`;
+    <span class="amt num">${main}${sub}</span></button>`);
 }
 function rowBuy(it) {
   const meta = [it.category, it.date ? niceDate(it.date) : "", it.note].filter(Boolean).map(esc).join(" · ");
-  return `<button class="row" data-id="${esc(it.id)}"><span class="badge" style="background:${colorFor(it.category)}">${esc(initials(it.category))}</span>
+  return wrapRow(it, `<button class="row" data-id="${esc(it.id)}"><span class="badge" style="background:${colorFor(it.category)}">${esc(initials(it.category))}</span>
     <span class="mid"><div class="name">${esc(it.name)}</div><div class="meta">${meta}</div></span>
-    <span class="amt num">${fmt(it.pence)}</span></button>`;
+    <span class="amt num">${fmt(it.pence)}</span></button>`);
 }
+
+let armed = null, armTimer = null;
+function wrapRow(it, inner) {
+  const on = armed === it.id;
+  return `<div class="rowwrap">${inner}<button type="button" class="rm${on ? " armed" : ""}" data-rm="${esc(it.id)}" aria-label="${on ? "Confirm remove" : "Remove"} ${esc(it.name)}">${TRASH}${on ? "Remove" : ""}</button></div>`;
+}
+const TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>';
 
 /* ---------- form ---------- */
 function paintForm() {
@@ -350,7 +364,18 @@ $("cancel").addEventListener("click", closeForm);
 $("scrim").addEventListener("click", e => { if (e.target === $("scrim")) closeForm(); });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("scrim").hidden) closeForm(); });
 $("add").addEventListener("click", () => openForm());
-$("view").addEventListener("click", e => { const r = e.target.closest(".row"); if (!r) return; const it = items.find(i => i.id === r.dataset.id); if (it) openForm(it); });
+$("view").addEventListener("click", async e => {
+  const rm = e.target.closest(".rm");
+  if (rm) {
+    const id = rm.dataset.rm;
+    clearTimeout(armTimer);
+    if (armed !== id) { armed = id; render(); armTimer = setTimeout(() => { armed = null; render(); }, 3000); return; }
+    armed = null;
+    if (!col) { toast("Can't remove right now"); render(); return; }
+    try { await col.doc(id).delete(); toast("Removed"); } catch { toast("Couldn't remove. Try again."); render(); }
+    return;
+  }
+  const r = e.target.closest(".row"); if (!r) return; const it = items.find(i => i.id === r.dataset.id); if (it) openForm(it); });
 function setTab(t) { tab = t; try { localStorage.setItem("hl-tab", t); } catch {} render(); }
 $("tab-bills").addEventListener("click", () => setTab("bills"));
 $("tab-buys").addEventListener("click", () => setTab("buys"));
